@@ -1,0 +1,34 @@
+{
+  "name": "grunt-versioning-incremental",
+  "description": "Versioning static assets with Grunt",
+  "version": "0.0.3",
+  "homepage": "https://github.com/brandonmcquarie/grunt-versioning-incremental",
+  "author": {
+    "name": "Brandon McQuarie",
+    "email": "brandon.mcquarie@gmail.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/brandonmcquarie/grunt-versioning-incremental.git"
+  },
+  "bugs": {
+    "url": "https://github.com/brandonmcquarie/grunt-versioning-incremental/issues"
+  },
+  "main": "Gruntfile.js",
+  "engines": {
+    "node": ">= 0.8.0"
+  },
+  "devDependencies": {
+    "grunt": "~0.4.1"
+  },
+  "peerDependencies": {
+    "grunt": "~0.4.1"
+  },
+  "keywords": [
+    "gruntplugin"
+  ],
+  "dependencies": {
+    "underscore": "~1.6.0"
+  },
+  "readmeFilename": "README.md"
+}
