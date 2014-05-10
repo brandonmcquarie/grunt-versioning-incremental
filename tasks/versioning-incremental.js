@@ -85,8 +85,7 @@ module.exports = function(grunt) {
 
         _.each(this.files, function(file) {
             tempFileName = path.basename(file.dest).split('.');
-            //sameDir = file.orig.src === file.orig.dest || file.orig.cwd === file.orig.dest;
-
+            
             if (!options.findRegex.test(path.basename(file.dest))) {
                 versionedFile = {
                     version: options.startingVersion,
