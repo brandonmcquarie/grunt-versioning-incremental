@@ -7,6 +7,8 @@
 > If example._5_.extension exists, and the example.extension file is modified, example._5_.extension will be removed and example._6_.extension will be created.
 > I have a helper function in my Node templates that does the following
 
+> Warning! If you change the options.pattern this module WILL delete versioned files that no longer match the new pattern. If you want to change your pattenr, I recommend passing `logging` as `[2]` and `testing` as `true` so you can see what files will be deleted before you build!
+
 ```js
     setVersioning(fs.readFileSync('.cache/versioning.json', { encoding: 'utf8' }));
     
@@ -100,6 +102,53 @@ Argument `value`: `Relative path to versioned file`
 
 Same type of thing as the `outputKey(key)` function above, allows you to rename any part of the relative path to the built file. I rename `public/css/` in my CSS files to `assets/`
 
+#### options.pattern
+Type: `String`
+Requirements: `name` `version` `ext`
+Default value: `name._version_.ext`
+
+Create the structure that you want your versioned files to have. `name._version_.ext` will turn testFile.css into `testFile._1_.css`
+
+#### options.findRegex
+Type: `RegExp`
+Default value: Auto generated baesed off of options.pattern
+
+Create the Regular Expression that will determine if a file in a given directory is a versioned file or not. Recommend leaving this parameter alone unless you have very strict RegEx requirements. The `options.pattern` should handle most cases.
+
+#### options.versionRegex
+Type: `RegExp`
+Default value: Auto generated baesed off of options.pattern
+
+Create the Regular Expression that will grab the version number out of the versioned file path. Recommend leaving this parameter alone unless you have very strict RegEx requirements. The `options.pattern` should handle most cases.
+
+#### options.replaceRegex
+Type: `RegExp`
+Default value: Auto generated baesed off of options.pattern
+
+Create the Regular Expression that will grab the entire version number and any additional characters. For the example `name._version_.ext`, it will grab the `._version.`. Recommend leaving this parameter alone unless you have very strict RegEx requirements. The `options.pattern` should handle most cases.
+
+#### options.startingVersion
+Type: `Integer`
+Default value: 0
+
+Starting version number for your unversioned files. If your file is already versioned, it will stil only increment by one. If your file has not been versioned yet, it will start off at `options.startinVersion + 1`, so a value of 200 will start your versioning at 201.
+
+#### options.logging
+Type: `Array` of `Integer`
+Default value: [ 1, 2 ]
+
+Modify this to get more granular logs during the build process.
+1. Creating new version file
+2. Deleting old version file
+3. Process flow `Useful for debugging`
+4. File already versioned
+
+#### options.testing
+Type: `Boolean`
+Default value: false
+
+Having a value of `true` will cause the build process to generate console messages, depending on your `options.logging` array, but will not delete, create, or modify any files. Your Cache File will remain untouched as well. Useful for when you are testing new settings, especially when changing your `options.pattern` to ensure no extra files get deleted.
+
 ### Usage Examples
 
 #### Versioning your CSS directory, saving the versioned files into the same directory
@@ -108,17 +157,67 @@ In this example, all of your CSS files inside your CSS directory will be version
 ```js
 grunt.initConfig({
     versioningIncremental: {
-        files: [
-            {
-                expand: true,
-                cwd: 'public/css/',
-                src: '**/*.*',
-                dest: 'public/css/',
-            }
-        ]
+        staticFiles: {
+            options: {
+                outputKey: function(key) {
+                    key = key.replace('public/static-built/', '/assets/');
+                    console.log(key);
+                    return key;
+                },
+                outputValue: function(value) {
+                    value = value.replace('public/static-built/', '/assets/');
+                    return value;
+                },
+                startingVersion: 200
+                pattern: 'version.name.ext'
+            },
+            files: [
+                {
+                    expand: true,
+                    cwd: 'public/static-built/',
+                    src: '**/*.*',
+                    dest: 'public/static-built/',
+                }
+            ]
+        },
+        cssFiles: {
+            options: {
+                outputKey: function(key) {
+                    key = key.replace('public/css/', '/css/');
+                    console.log(key);
+                    return key;
+                },
+                outputValue: function(value) {
+                    value = value.replace('public/css/', '/css/');
+                    return value;
+                },
+                testing: true,
+                logging: [1, 2, 3, 4],
+                versionAllFiles: true
+            },
+            files: [
+                {
+                    expand: true,
+                    cwd: 'public/css/',
+                    src: '**/*.*',
+                    dest: 'public/css/',
+                }
+            ]
+        }
     },
-})
+});
 ```
 
 ## Release History
-_(Nothing yet)_
+
+* Added additional config options
+    * options.logging
+    * options.pattern
+    * options.findRegex
+    * options.replaceRegex
+    * options.versionRegex
+    * options.testing
+    * options.startingVersion
+    * options.versionAllFiles
+* Added automatic generation of Regex based on your options.pattern
+* Updated process flow to try and account for more Grunt Configurations
