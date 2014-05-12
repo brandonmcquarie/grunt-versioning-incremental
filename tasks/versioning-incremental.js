@@ -85,14 +85,14 @@ module.exports = function(grunt) {
 
         _.each(this.files, function(file) {
             tempFileName = path.basename(file.dest).split('.');
-            
+
             if (!options.findRegex.test(path.basename(file.dest))) {
                 versionedFile = {
                     version: options.startingVersion,
                     src: cacheJSON.original[file.dest] || ''
                 }
 
-                if (!versionedFile.src.match(options.versionRegex, '.')) {
+                if (versionedFile.src.length && !versionedFile.src.match(options.versionRegex, '.')) {
                     if (!options.force && !grunt.option( 'force' )) {
                         grunt.fail.warn('Regex may have changed, unable to find version number. Stopping execution, versioned files will be deleted! Pass option "force = true" to ignore this warning!');
                     }
@@ -113,11 +113,12 @@ module.exports = function(grunt) {
                     versionedFile.version = parseInt(versionedFile.src.match(options.versionRegex, '.')[0]);
                     versionedFile.src = [versionedFile.src];
                 } else {
+                    versionedFile.version = 0;
                     versionedFile.src = [];
                 }
 
                 files[file.dest] = _.extend({
-                    version: 0,
+                    version: versionedFile.version,
                     versioned: { src: versionedFile.src }
                 }, files[file.dest], {
                     unversioned: file
