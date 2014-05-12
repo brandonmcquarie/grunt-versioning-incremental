@@ -22,6 +22,7 @@ module.exports = function(grunt) {
         var done = this.async(),
             options = this.options({
                 cacheFile: '.cache/versioning.json',
+                deletedFile: '.cache/versioningOld.json',
                 encoding: 'utf8',
                 outputKey: function(key) { return key; },
                 outputValue: function(value) { return value; },
@@ -34,6 +35,7 @@ module.exports = function(grunt) {
                 findRegex: undefined,
                 replaceRegex: undefined,
                 versionRegex: undefined,
+                deleteOld: true,
                 startingVersion: 0,
                 logging: [1, 2],
                 testing: false
@@ -43,6 +45,7 @@ module.exports = function(grunt) {
                 modified: {},
                 original: {}
             },
+            cacheOld = [],
             position = 0,
             unversionedHash = '',
             versionedHash = '',
@@ -66,6 +69,16 @@ module.exports = function(grunt) {
                         modified: {},
                         original: {}
                     };
+                }
+            } catch(e) {}
+        }
+
+        if (fs.existsSync(options.deletedFile)) {
+            try {
+                cacheOld = JSON.parse(grunt.file.read(options.deletedFile));
+
+                if (!_.isObject(cacheJSON)) {
+                    cacheOld = [];
                 }
             } catch(e) {}
         }
@@ -191,8 +204,14 @@ module.exports = function(grunt) {
                 });
 
                 file.versioned.src.forEach(function(f) {
-                    output('✔ Deleting version file: ' + f, 2, options);
-                    !options.testing && grunt.file.delete(f);
+                    if (options.deleteOld) {
+                        output('✔ Deleting version file: ' + f, 2, options);
+                        !options.testing && grunt.file.delete(f);
+                    }
+
+                    cacheOld.push({
+                        src: options.outputValue(f)
+                    });
                 });
             } else {
                 file.unversioned.src.forEach(function(f) {
@@ -205,6 +224,7 @@ module.exports = function(grunt) {
         });
 
         output('Writing out Cache File to: ' + options.cacheFile, 3, options);
+        !options.testing && grunt.file.write(options.deletedFile, JSON.stringify(cacheOld));
         !options.testing && grunt.file.write(options.cacheFile, JSON.stringify(cacheJSON));
 
         done();

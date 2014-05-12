@@ -76,6 +76,12 @@ Default value: `.cache/versioning.json`
 
 Where do you want to save the output file so you can translate the unversioned URL to the versioned URL
 
+#### options.deletedFile
+Type: `String`
+Default value: `.cache/versioningOld.json`
+
+Where do you want to save a list of all of the old versioned files. Useful to have a manual script that deletes them. As an example, I upload all of my versioned files to an S3 bucket, after I test that all the files are good, I run a script that reads in the versioningOld.json and deletes those files from S3.
+
 #### options.encoding
 Type: `String`
 Possible Values `utf8`, `ascii`, `base64`
@@ -149,6 +155,12 @@ Default value: false
 
 Having a value of `true` will cause the build process to generate console messages, depending on your `options.logging` array, but will not delete, create, or modify any files. Your Cache File will remain untouched as well. Useful for when you are testing new settings, especially when changing your `options.pattern` to ensure no extra files get deleted.
 
+#### options.deletedOld
+Type: `Boolean`
+Default value: true
+
+Do you want the old versioned files to be automatically deleted from the versioned directory.
+
 ### Usage Examples
 
 #### Versioning your CSS directory, saving the versioned files into the same directory
@@ -209,6 +221,9 @@ grunt.initConfig({
 ```
 
 ## Release History
+
+* Added optional deleting of old versioned files
+* Added old version file cache
 
 * Fixed issue with versioning files when the versioned file has been manually deleted
 * Fixed issue with versioning files with new RegEx
