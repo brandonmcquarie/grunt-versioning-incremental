@@ -210,6 +210,9 @@ grunt.initConfig({
 
 ## Release History
 
+* Fixed issue with versioning files when the versioned file has been manually deleted
+* Fixed issue with versioning files with new RegEx
+
 * Added additional config options
     * options.logging
     * options.pattern

@@ -111,7 +111,12 @@ module.exports = function(grunt) {
 
                 if (versionedFile.src.length) {
                     versionedFile.version = parseInt(versionedFile.src.match(options.versionRegex, '.')[0]);
-                    versionedFile.src = [versionedFile.src];
+                    if (grunt.file.exists(versionedFile.src)) {
+                        versionedFile.src = [versionedFile.src];
+                    } else {
+                        output('✔ Old version file not found: ' + versionedFile.src, 2, options);
+                        versionedFile.src = [];
+                    }
                 } else {
                     versionedFile.version = 0;
                     versionedFile.src = [];
