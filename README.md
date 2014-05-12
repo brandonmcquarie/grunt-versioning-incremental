@@ -222,6 +222,10 @@ grunt.initConfig({
 
 ## Release History
 
+* Removed unused var's
+* Updated logic for gathering mappings between src/dest files
+* Updated var's locally to use a local object instead of creating a new var every time
+
 * Added optional deleting of old versioned files
 * Added old version file cache
 
