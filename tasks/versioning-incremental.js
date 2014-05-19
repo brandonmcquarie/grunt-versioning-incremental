@@ -174,7 +174,7 @@ module.exports = function(grunt) {
             }
 
             if (localParams.versionedHash !== localParams.unversionedHash || options.versionAllFiles) {
-                localParams.newFilePath = options.versionFile.call(this, file.unversioned.dest, file.version + 1);
+                localParams.newFilePath = options.versionFile.call(this, file.unversioned.dest, file.version + 1 > options.startingVersion ? file.version + 1 : options.startingVersion);
 
                 file.unversioned.src.forEach(function(f) {
                     cacheJSON.modified[options.outputKey(f)] = options.outputValue(localParams.newFilePath);
