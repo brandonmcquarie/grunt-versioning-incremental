@@ -13,7 +13,7 @@
     setVersioning(fs.readFileSync('.cache/versioning.json', { encoding: 'utf8' }));
     
     setVersioning: function(file) {
-		this.versionRoutes = JSON.parse(file);
+		this.versionRoutes = JSON.parse(file).modified;
 	}
 
 	getVersionFile: function(path) {
