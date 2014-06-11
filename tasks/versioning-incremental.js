@@ -25,12 +25,16 @@ module.exports = function(grunt) {
                 encoding: 'utf8',
                 outputKey: function(key) { return key; },
                 outputValue: function(value) { return value; },
-                versionFile: function(destPath, rev) {
-                    var fileName = options.pattern.replace('name', path.basename(destPath, path.extname(destPath))).replace('version', rev).replace('.ext', path.extname(destPath));
-                    return path.dirname(destPath) + path.sep + fileName;
+                versionFile: function(destPath, rev, file) {
+                    if (options.versionDirectory) {
+                        return file.unversioned.orig.dest + rev + '/' + destPath.replace(file.unversioned.orig.dest, '');
+                    }
+
+                    return '/' + path.dirname(destPath) + path.sep + options.pattern.replace('name', path.basename(destPath, path.extname(destPath))).replace('version', rev).replace('.ext', path.extname(destPath));
                 },
                 versionAllFiles: false,
                 pattern: 'name._version_.ext',
+                versionDirectory: false,
                 findRegex: undefined,
                 replaceRegex: undefined,
                 versionRegex: undefined,
@@ -47,8 +51,8 @@ module.exports = function(grunt) {
             localParams = {},
             cacheOld = [];
 
-        options.logging = _.isArray(options.logging) ? options.logging : [options.logging];
 
+        options.logging = _.isArray(options.logging) ? options.logging : [options.logging];
         output('Reading Cache File', 3, options);
         if (fs.existsSync(options.cacheFile)) {
             try {
@@ -76,14 +80,73 @@ module.exports = function(grunt) {
         output('Cache File Read: ' + _.keys(cacheJSON.original).length + ' found cached files', 3, options);
         output('Old Cache File Read: ' + cacheOld.length + ' found cached files', 3, options);
 
-        options.findRegex = options.findRegex || new RegExp(options.pattern.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&").replace(/(name|version|ext)/g, '.+'));
-        options.versionRegex = options.versionRegex || new RegExp('(?!=' + options.pattern.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&").replace(/(name|ext)/g, '').replace('version', ')[0-9]+(?=').replace('\\.\\.', '\\..+\\.') + ')')
-        options.replaceRegex = options.replaceRegex || new RegExp(options.pattern.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&").replace(/(name|ext)/g, '').replace('version', '[0-9]').replace('\\.\\.', '\\.'))
-        output('Created Find, Replace and Version Regex for: ' + options.pattern, 3, options);
+        if (!options.versionDirectory) {
+            options.findRegex = options.findRegex || new RegExp(options.pattern.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&").replace(/(name|version|ext)/g, '.+'));
+            options.versionRegex = options.versionRegex || new RegExp('(?!=' + options.pattern.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&").replace(/(name|ext)/g, '').replace('version', ')[0-9]+(?=').replace('\\.\\.', '\\..+\\.') + ')')
+            options.replaceRegex = options.replaceRegex || new RegExp(options.pattern.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&").replace(/(name|ext)/g, '').replace('version', '[0-9]').replace('\\.\\.', '\\.'))
+            output('Created Find, Replace and Version Regex for: ' + options.pattern, 3, options);
+        }
 
         output('Creating versioning object based on found files.', 3, options);
-        _.each(this.files, function(file) {
-            if (!options.findRegex.test(path.basename(file.dest))) {
+        if (!options.versionDirectory) {
+            _.each(this.files, function(file) {
+                if (!options.findRegex.test(path.basename(file.dest))) {
+                    cacheJSON.original[file.dest] = cacheJSON.original[file.dest] || '';
+
+                    localParams.versionedFile = {
+                        version: options.startingVersion,
+                        src: cacheJSON.original[file.dest] || ''
+                    }
+
+                    if (cacheJSON.original[file.dest].length && !cacheJSON.original[file.dest].match(options.versionRegex, '.')) {
+                        if (!options.force && !grunt.option( 'force' )) {
+                            grunt.fail.warn('Regex may have changed, unable to find version number. Stopping execution, versioned files will be deleted! Pass option "force = true" to ignore this warning!');
+                        }
+
+                        files[cacheJSON.original[file.dest]] = _.extend({}, files[cacheJSON.original[file.dest]], {
+                            versioned: { src: [cacheJSON.original[file.dest]], dest: cacheJSON.original[file.dest] },
+                            version: 0,
+                            remove: true
+                        });
+
+                        localParams.versionedFile = {
+                            version: 0,
+                            src: []
+                        }
+                    } else if (localParams.versionedFile.src.length) {
+                        localParams.versionedFile.version = parseInt(cacheJSON.original[file.dest].match(options.versionRegex, '.')[0]);
+                        if (grunt.file.exists(cacheJSON.original[file.dest])) {
+                            localParams.versionedFile.src = [cacheJSON.original[file.dest]];
+                        } else {
+                            output('✔ Old version file not found: ' + cacheJSON.original[file.dest], 2, options);
+                            localParams.versionedFile.src = [];
+                        }
+                    } else {
+                        localParams.versionedFile.version = 0;
+                        localParams.versionedFile.src = [];
+                    }
+
+                    files[file.dest] = _.extend({
+                        version: localParams.versionedFile.version,
+                        versioned: { src: localParams.versionedFile.src }
+                    }, files[file.dest], {
+                        unversioned: file
+                    });
+                } else if (file.dest.match(options.versionRegex, '.')) {
+                    localParams.version = parseInt(file.dest.match(options.versionRegex, '.')[0]);
+                    files[file.dest.replace(options.replaceRegex, '.')] = _.extend({}, files[file.dest.replace(options.replaceRegex, '.')], {
+                        versioned: file,
+                        version: version
+                    });
+                } else {
+                    files[file.dest] = _.extend({}, files[file.dest], {
+                        versioned: file,
+                        version: 0
+                    });
+                }
+            });
+        } else {
+            _.each(this.files, function(file) {
                 cacheJSON.original[file.dest] = cacheJSON.original[file.dest] || '';
 
                 localParams.versionedFile = {
@@ -91,32 +154,27 @@ module.exports = function(grunt) {
                     src: cacheJSON.original[file.dest] || ''
                 }
 
-                if (cacheJSON.original[file.dest].length && !cacheJSON.original[file.dest].match(options.versionRegex, '.')) {
-                    if (!options.force && !grunt.option( 'force' )) {
-                        grunt.fail.warn('Regex may have changed, unable to find version number. Stopping execution, versioned files will be deleted! Pass option "force = true" to ignore this warning!');
-                    }
+                if (localParams.versionedFile.src.length) {
+                    try {
+                        localParams.versionedFile = {
+                            version: 0,
+                            src: []
+                        }
+                        localParams.versionedFile.version = parseInt(cacheJSON.original[file.dest].replace(file.orig.dest, '').split('/')[0]);
 
-                    files[cacheJSON.original[file.dest]] = _.extend({}, files[cacheJSON.original[file.dest]], {
-                        versioned: { src: [cacheJSON.original[file.dest]], dest: cacheJSON.original[file.dest] },
-                        version: 0,
-                        remove: true
-                    });
+                        if (grunt.file.exists(cacheJSON.original[file.dest])) {
+                            localParams.versionedFile.src = [cacheJSON.original[file.dest]];
+                        } else {
+                            output('✔ Old version file not found: ' + cacheJSON.original[file.dest], 2, options);
+                            localParams.versionedFile.src = [];
+                        }
 
+                    } catch(e) {}
+                } else {
                     localParams.versionedFile = {
                         version: 0,
                         src: []
                     }
-                } else if (localParams.versionedFile.src.length) {
-                    localParams.versionedFile.version = parseInt(cacheJSON.original[file.dest].match(options.versionRegex, '.')[0]);
-                    if (grunt.file.exists(cacheJSON.original[file.dest])) {
-                        localParams.versionedFile.src = [cacheJSON.original[file.dest]];
-                    } else {
-                        output('✔ Old version file not found: ' + cacheJSON.original[file.dest], 2, options);
-                        localParams.versionedFile.src = [];
-                    }
-                } else {
-                    localParams.versionedFile.version = 0;
-                    localParams.versionedFile.src = [];
                 }
 
                 files[file.dest] = _.extend({
@@ -125,19 +183,8 @@ module.exports = function(grunt) {
                 }, files[file.dest], {
                     unversioned: file
                 });
-            } else if (file.dest.match(options.versionRegex, '.')) {
-                localParams.version = parseInt(file.dest.match(options.versionRegex, '.')[0]);
-                files[file.dest.replace(options.replaceRegex, '.')] = _.extend({}, files[file.dest.replace(options.replaceRegex, '.')], {
-                    versioned: file,
-                    version: version
-                });
-            } else {
-                files[file.dest] = _.extend({}, files[file.dest], {
-                    versioned: file,
-                    version: 0
-                });
-            }
-        });
+            });
+        }
 
         output('Processed all SRC files', 3, options);
         options.versionAllFiles && output('Forcing reversioning of all files', 3, options) || output('Starting versioning', 3, options);
@@ -174,7 +221,7 @@ module.exports = function(grunt) {
             }
 
             if (localParams.versionedHash !== localParams.unversionedHash || options.versionAllFiles) {
-                localParams.newFilePath = options.versionFile.call(this, file.unversioned.dest, file.version + 1 > options.startingVersion ? file.version + 1 : options.startingVersion);
+                localParams.newFilePath = options.versionFile.call(this, file.unversioned.dest, file.version + 1 > options.startingVersion ? file.version + 1 : options.startingVersion, file);
 
                 file.unversioned.src.forEach(function(f) {
                     cacheJSON.modified[options.outputKey(f)] = options.outputValue(localParams.newFilePath);
